@@ -16,11 +16,10 @@ int T=3;
 int LEN=T*2+1;
 int MAX_SIZE = 50;
 int SEARCHING_SIZE = 180;
-//set<string> f[100];
 vector<string> zero_graph; // store the graphs G with F(G)=0
 const int BITS = 25; // BITS is larger, the memory is larger and the code runs more efficient. 
 const int mod = 1 << BITS;
-const int thread_num = 64;
+const int thread_num = 128;
 const int thread_mask = thread_num - 1;
 vector<pair<string, int> > f[mod]; // f stores (G,v|n) with F(G)=v and |G|=n. Note that the integer value is a compressed value with v and n.
 vector<pair<vector<int>, pair<int, int> > > configuration_queue[thread_num]; // the generated configuration queue for each thread
@@ -281,15 +280,18 @@ int main() {
         }
     }
     printf("This is the main process.\n");
+    printf("searching size:%d\n", SEARCHING_SIZE);
     MyTimer timer(MyTimer:: SECOND);
     for (int i = 1; i <= 10; i ++) {
         printf("check t=%d:", i);
+        fflush(stdout);
         timer.SetRecordTimePoint();
         single_search(i, SEARCHING_SIZE);
         if (check_draw_characteristics(1)) printf("YES");
         else printf("NO");
         puts("");
         printf("%.3fs\n", timer.GetRecordDuration());
+        fflush(stdout);
     }
     exit(0);
     for (int i = 0; i < thread_num; i ++) {

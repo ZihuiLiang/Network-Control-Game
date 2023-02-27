@@ -10,7 +10,7 @@ using namespace std;
 int T=3;
 int LEN=T*2+1;
 int MAX_SIZE = 50;
-int SEARCHING_SIZE = 100;
+int SEARCHING_SIZE = 50;
 set<string> f[100];
 void set_environment(int _T, int _MAX_SIZE) {
     T=_T;
@@ -95,46 +95,10 @@ void search(bool notice) {
         if (notice) printf("Finish:%d\n", i);
     }
 }
-void output() {
-    char s[10];
-    for (int result=0; result<=LEN; result ++) {
-        sprintf(s, "tout%d", result);
-        freopen(s, "w",stdout);
-        for (auto u:f[result]) {
-            printf("%lu ", u.size());
-            for (int i = 0; i < u.size(); i ++)
-                if (u[i] <= 0)
-                    printf("%d ", (int)u[i] + 256);
-                else 
-                    printf("%d ", u[i]);
-            puts("");
-        }
-        fclose(stdout);
-    }
-    
-}
 
-void output0() {
-    freopen("tout0", "w",stdout);
-    for (auto u:f[0]) {
-        printf("%lu ", u.size());
-        for (int i = 0; i < u.size(); i ++)
-            if (u[i] <= 0)
-                printf("%d ", (int)u[i] + 256);
-            else 
-                printf("%d ", u[i]);
-        puts("");
-    }
-    fclose(stdout);
-} 
 void single_search(int _T, int _MAX_SIZE, bool notice) {
     set_environment(_T, _MAX_SIZE);
     search(notice);
-}
-void single_check(int _T, int _MAX_SIZE, bool notice) {
-    single_search(_T, _MAX_SIZE, notice);
-    output0();
-   // output();
 }
 bool same_vec(vector<int> a, vector<int> b) {
     if (a.size()!=b.size()) return 0;
@@ -184,31 +148,21 @@ bool check_draw_characteristics(bool notice) {
     }
     return check;
 }
-long long check_sum(int A, int B) {
-    long long v = 0;
-    for (int i = 0; i <= LEN; i ++) 
-        for (auto u:f[i]) {
-            for (auto w:u)
-                v = v * A + w;
-            v = v * B + i;
-        }
-
-    return v;
-}
 void check_f() {
+    printf("searching size:%d\n", SEARCHING_SIZE);
     for (int i = 1; i <= 10; i ++) {
         printf("check t=%d:", i);
+        fflush(stdout);
         double s = clock();
         single_search(i, SEARCHING_SIZE, 0);
         if (check_draw_characteristics(1)) printf("YES");
         else printf("NO");
         puts("");
-        //printf("%lld\n", check_sum(1231, 1239));
         printf("%.3fs\n", (clock() - s)/ CLOCKS_PER_SEC);
+        fflush(stdout);
     }
 }
 int main() {
-    //single_check(1);
     check_f();
     return 0;
 }

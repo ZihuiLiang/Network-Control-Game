@@ -2,7 +2,7 @@
 
 This is a code library for searching draw configuration patterns of network control games in linear forests. The key algorithm is memorized search.
 
-Note that the algorithm only searchs configurations $G$ with $G=DRT(G,D_{sym})$.
+Note that the algorithm only searchs configurations $G$ with $G=G_{sum}$.
 
 Test system: 92 threads, 192 GB memory, Ubuntu 18.04.
 
@@ -12,7 +12,7 @@ For larger graphs, we verify the pattern of draw configurations and omit the out
 
 t_1-10_a.cpp, t_1-10_b.cpp, t_1-10_c.cpp work on verification of draw configurations for network control game with $t\in [1,10]$. By applying efficient datastructures (e.g., hash table) and multithread technique, t_1-10_c.cpp is the most efficient one.
 
-Note that if one wants to verify the result of large graphs efficiently, the code needs large memory and many threads. For example, to check the bound of $180$,  we run t_1-10.c.cpp with 192GB memory and 92 threads for about 2 hours. Also we provide a test version, t_1-10_c_small_test.cpp which verifies graphs $G$ with $|G|\le 100$. Run it with 8GB memory and 16-thread system. One can get the result in 1 or 2 minutes.
+Note that if one wants to verify the result of large graphs efficiently, the code needs large memory and many threads. For example, to check the bound of $180$,  we run t_1-10.c.cpp on the system of 192GB memory and 92 threads for about 2 hours. Also we provide a test version, t_1-10_c_small_test.cpp which verifies graphs $G$ with $|G|\le 100$. Run it with 32GB memory and 16-thread system. One can get the result in 1 or 2 minutes.
 
 The way to run these codes is shown as follows:
 
@@ -31,11 +31,11 @@ g++ t_1_c.cpp -o t_1_c -O2 -std=c++11
 
 g++ t_1-10_a.cpp -o t_1-10_a -O2 -std=c++11
 ./t_1-10_a
-//verify the games with t in [1,10] on graphs G with n(G)<=100
+//verify the games with t in [1,10] on graphs G with n(G)<=50
 
 g++ t_1-10_b.cpp -o t_1-10_b -O2 -std=c++11
 ./t_1-10_b
-//verify the games with t in [1,10] on graphs G with n(G)<=100
+//verify the games with t in [1,10] on graphs G with n(G)<=70
 
 
 g++ t_1-10_c.cpp my_timer.cpp -o t_1-10_c -O2 -std=c++11 -pthread

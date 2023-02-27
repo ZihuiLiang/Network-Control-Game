@@ -98,6 +98,7 @@ void split(int n, int mx, vector<int> d) { // generate linear forests with n ver
     }
 }
 int main() {
+    printf("searching size:%d\n", SEARCH_SIZE);
     for (int i = 1;  i <= SEARCH_SIZE; i ++) {
         split(i, i, {}), printf("Finish:%d\n", i);
         if (f[0].size() > 3) {

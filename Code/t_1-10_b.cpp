@@ -12,8 +12,7 @@ using namespace std;
 int T=3;
 int LEN=T*2+1;
 int MAX_SIZE = 50;
-int SEARCHING_SIZE = 100;
-//set<string> f[100];
+int SEARCHING_SIZE = 70;
 vector<string> zero_graph;
 const int mod = 1 << 15;
 vector<pair<string, int> > f[mod];
@@ -170,35 +169,21 @@ bool check_draw_characteristics(bool notice) { // check draw configurations
     }
     return check;
 }
-long long check_sum(int A, int B) {
-    set<string> _f[LEN+1];
-    long long v = 0;
-    for (int i = 0; i < mod; i ++)
-        for (auto u:f[i]) {
-            _f[u.second>>10].insert(u.first);
-        }
-    for (int i = 0; i <= LEN; i ++) 
-        for (auto u:_f[i]) {
-            for (auto w:u)
-                v = v * A + w;
-            v = v * B + i;
-        }
-
-    return v;
-}
 void check_f() {
+    printf("searching size:%d\n", SEARCHING_SIZE);
     for (int i = 1; i <= 10; i ++) {
         printf("check t=%d:", i);
+        fflush(stdout);
         double s = clock();
         single_search(i, SEARCHING_SIZE, 0);
         if (check_draw_characteristics(1)) printf("YES");
         else printf("NO");
         puts("");
         printf("%.3fs\n", (clock() - s)/ CLOCKS_PER_SEC);
+        fflush(stdout);
     }
 }
 int main() {
-    //single_check(1);
     check_f();
     return 0;
 }
