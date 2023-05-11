@@ -46,3 +46,6 @@ g++ t_1-10_c_small_test.cpp my_timer.cpp -o t_1-10_c_small_test -O2 -std=c++11 -
 ./t_1-10_c_small_test
 //verify the games with t in [1,10] on graphs G with n(G)<=100
 ```
+
+Also we update a rust version which is as efficient as the C++ version but with more safety guarantee provided by rust compiler. See "rust version" file.
+
