@@ -5,7 +5,7 @@ use std::collections::{HashMap};
 use std::thread;
 use std::sync::{RwLock, Arc, Mutex, Condvar};
 
-const SEARCH_SIZE: u8 = 100;
+const SEARCH_SIZE: u8 = 80;
 static T: u8 = 1;
 const THREAD_NUM: u8 = 64;
 const THREAD_MASK: u8 = THREAD_NUM - 1;
@@ -17,6 +17,7 @@ fn main() {
     solution.start();
     println!("t:{} search size:{}", T, SEARCH_SIZE);
     for sz in 1..=SEARCH_SIZE {
+        *solution.current_size.write().unwrap() = sz;
         build_config_queues(sz, &mut solution.config_queues);
         notify_all(&solution.distri_sems);
         wait_all(&solution.gather_sems);
@@ -28,6 +29,11 @@ fn main() {
     for (i, graph) in zero_graph.iter().enumerate() {
         println!("{}th zero_graph: {}", i, format_config(graph));
     }
+
+    println!("Start verification");
+    notify_all(&solution.distri_sems);
+    wait_all(&solution.gather_sems);
+    println!("Finish verification");
 }
 
 struct NetworkControl {
@@ -35,7 +41,8 @@ struct NetworkControl {
     zero_graph: Arc<RwLock<Vec<Vec<u8> > > >, 
     config_queues: Vec<Arc<RwLock<Vec<Vec<u8> > > > >,
     distri_sems: Vec<Arc<(Mutex<bool>, Condvar)> >,
-    gather_sems: Vec<Arc<(Mutex<bool>, Condvar)> >
+    gather_sems: Vec<Arc<(Mutex<bool>, Condvar)> >,
+    current_size: Arc<RwLock<u8> >
 }
 
 impl NetworkControl {
@@ -50,7 +57,8 @@ impl NetworkControl {
             zero_graph: Arc::new(RwLock::new(vec![vec![]])),
             config_queues: vec![],
             distri_sems: vec![],
-            gather_sems: vec![]
+            gather_sems: vec![],
+            current_size: Arc::new(RwLock::new(0u8))
         };
         for i in 0..THREAD_NUM {
             t.distri_sems.push(Arc::new((Mutex::new(false), Condvar::new())));
@@ -68,6 +76,7 @@ impl NetworkControl {
             let config_queue = Arc::clone(&self.config_queues[thread_id as usize]);
             let zero_graph = Arc::clone(&self.zero_graph);
             let f = Arc::clone(&self.f);
+            let current_size = Arc::clone(&self.current_size);
             thread::Builder::new().name(thread_name).spawn(move|| {
                 let thread_id = thread::current().name().unwrap().parse::<u8>().unwrap();
                 loop {
@@ -78,11 +87,159 @@ impl NetworkControl {
                     wait(&distri_sem);
                     put_value(&config_value, &f, &zero_graph, thread_id);
                     notify(&gather_sem);
+                    if current_size.read().unwrap().clone() == SEARCH_SIZE {
+                        break;
+                    }
                 }
+                wait(&distri_sem);
+                let _f = f[thread_id as usize].read().unwrap().clone();
+                for (paths, value) in _f {
+                    if T == 1 {
+                        if NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) != value {
+                            println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T));
+                        }
+                    } else {
+                        if (NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0) != (value > 0) {
+                            println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value > 0, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0);
+                        }
+                    }
+                }
+                notify(&gather_sem);
             });
         }
     }
 
+    fn isplayer0win(paths:Vec<u8>, t: u8) ->bool {
+        let mut paths = paths;
+        if t == 1{
+            gfull_t1(&mut paths);
+            return paths.is_empty() == false;
+        }
+        gsym(&mut paths);
+        if paths == vec![1, 2*t+1, 2*t+2]  {
+            return false;
+        }
+        true
+    }
+
+    fn is_ddc_t1(paths:Vec<u8>) -> bool {
+        let mut paths = paths;
+        gfull_t1(&mut paths);
+        if paths.len() == 1 {
+            return (paths[0] & 1) > 0 && paths[0] >= 3;
+        }
+        if paths.len() == 2 {
+            return paths == vec![4u8, 7u8] || paths == vec![3u8,8u8] || paths == vec![1u8,10u8] || paths == vec![8u8,11u8] || paths == vec![5u8,14u8] || paths == vec![3u8,16u8] || paths[0] + 3 == paths[1];
+        }
+        if paths.len() == 3 {
+            return paths == vec![1u8, 4u8, 6u8] || paths == vec![1u8,3u8,7u8] || paths == vec![5u8, 6u8, 8u8] || paths == vec![3u8, 5u8, 11u8] || paths == vec![4u8, 8u8, 9u8] || paths == vec![4u8, 5u8, 12u8] || paths == vec![1u8, 8u8, 12u8] || paths == vec![1u8, 5u8, 15u8] || paths == vec![1u8, 4u8, 16u8] || 3 + paths[0] + paths[1] == paths[2];
+        }
+        if paths.len() == 4 {
+            if paths == vec![1u8, 5u8, 7u8, 8u8] || paths == vec![1u8, 4u8, 5u8, 11u8] {
+                return true;
+            }
+            for i in 0..4 {
+                for j in i+1..4 {
+                    let mut w: Vec<u8> = vec![];
+                    for k in 0..4 {
+                        if k != i && k != j {
+                            w.push(paths[k as usize]);
+                        }
+                    }
+                    let i = i as usize;
+                    let j = j as usize;
+                    if w == vec![3u8, 4u8] && paths[i] + 4 == paths[j] {
+                        return true;
+                    }
+                    if w == vec![3u8, 5u8] && paths[i] + 11 == paths[j] {
+                        return true;
+                    }
+                    if w == vec![1u8, 4u8] && paths[i] + 6 == paths[j] {
+                        return true;
+                    }
+                    if w == vec![1u8, 3u8] && paths[i] + 7 == paths[j] {
+                        return true;
+                    }
+                    if w == vec![5u8, 8u8] && paths[i] + 6 == paths[j] {
+                        return true;
+                    }
+                    if w == vec![3u8, 8u8] && paths[i] + 8 == paths[j] {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        if paths.len() == 5 {
+            for i in 0..5 {
+                for j in i+1..5 {
+                    let mut w: Vec<u8> = vec![];
+                    for k in 0..5 { 
+                        if k != i && k != j {
+                            w.push(paths[k as usize]);
+                        }
+                    }
+                    let i = i as usize;
+                    let j = j as usize;
+                    if w == vec![4u8, 5u8, 8u8] && paths[i] + 4 == paths[j] {
+                        return true;
+                    }
+                    if w == vec![1u8, 5u8, 8u8] && paths[i] + 7 == paths[j] {
+                        return true;
+                    }
+                    if w == vec![1u8, 4u8, 8u8] && paths[i] + 8 == paths[j] {
+                        return true;
+                    }
+                    if w == vec![1u8, 4u8, 5u8] && paths[i] + 11 == paths[j] {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        false
+    }
+    
+    fn compute(paths:Vec<u8>, t:u8) -> u8 {
+        let mut paths = paths;
+        if t > 1 {
+            return NetworkControl::isplayer0win(paths.clone(), t) as u8;
+        }
+        gfull_t1(&mut paths);
+        let mut parity = 0u8;
+        for i in &paths {
+            parity ^= *i;
+        } 
+        if parity & 1 == 0 {
+            if NetworkControl::isplayer0win(paths.clone(), t) {
+                return 2u8;
+            }
+            return 0u8;
+        }
+        if NetworkControl::is_ddc_t1(paths.clone()) {
+            return 3u8;
+        }
+        return 1u8;
+    }
+
+    fn verify(&mut self) {
+        println!("Start verification");
+        for i in 0..THREAD_NUM {
+            let _f = self.f[i as usize].read().unwrap().clone();
+            for (paths, value) in _f {
+                if T == 1 {
+                    if NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) != value {
+                        println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T));
+                    }
+                } else {
+                    if (NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0) != (value > 0) {
+                        println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value > 0, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0);
+                    }
+                }
+            }
+        }   
+        println!("Finish verification");
+    }
 }
 
 fn config2threadid(d:& Vec<u8>) -> u8 {
@@ -93,7 +250,7 @@ fn config2threadid(d:& Vec<u8>) -> u8 {
     id & THREAD_MASK
 }
 
-fn clear(d:&mut Vec<u8>) {
+fn gsym(d:&mut Vec<u8>) {
     if d.is_empty() {
         return;
     }
@@ -109,6 +266,45 @@ fn clear(d:&mut Vec<u8>) {
     }
     d.resize((l + 1) as usize, 0u8);
 }
+
+fn gfull_t1(d:&mut Vec<u8>) {
+    gsym(d);
+    let mut w = vec![-1; 10];
+    for (index, i) in d.iter().enumerate() {
+        if *i > 8 {
+            break;
+        }
+        if *i == 1 || *i == 3 || *i == 4 || *i == 5 || *i == 8{
+            w[*i as usize] = index as i8;
+        }
+    }
+    if w[1] != -1 && w[3] != -1 && w[4] != -1 {
+        d[w[1] as usize] = 0;
+        d[w[3] as usize] = 0;
+        d[w[4] as usize] = 0;
+    } else {
+        if w[3] != -1 && w[5] != -1 && w[8] != -1 {
+            d[w[3] as usize] = 0;
+            d[w[5] as usize] = 0;
+            d[w[8] as usize] = 0;
+        } else {
+            if w[1] != -1 && w[4] != -1 && w[5] != -1 && w[8] != -1 {
+                d[w[1] as usize] = 0;
+                d[w[4] as usize] = 0;
+                d[w[5] as usize] = 0;
+                d[w[8] as usize] = 0;
+            }
+        }
+    }
+    let mut tmp = vec![];
+    for i in &mut *d {
+        if *i > 0 {
+            tmp.push(*i);
+        }
+    }  
+    *d = tmp.clone();
+}
+
 
 fn notify(sem:& (Mutex<bool>, Condvar)) {
     let (lock, cvar) = &*sem;    
@@ -191,7 +387,7 @@ fn search_value(config_queue:& Arc< RwLock< Vec<Vec<u8> > > >,config_value:&mut 
                 for k in i+1..config.len() {
                     u.push(config[k]);
                 }
-                clear(&mut u);
+                gsym(&mut u);
                 if u.is_empty() {
                     v = vv;
                 } else {
