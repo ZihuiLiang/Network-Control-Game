@@ -5,14 +5,12 @@ use std::collections::{HashMap};
 use std::thread;
 use std::sync::{RwLock, Arc, Mutex, Condvar};
 
-const SEARCH_SIZE: u8 = 100;
-static T: u8 = 1;
-const THREAD_NUM: u8 = 64;
-const THREAD_MASK: u8 = THREAD_NUM - 1;
-
+const SEARCH_SIZE: u16 = 100;
+static T: u16 = 1;
+const THREAD_NUM: u16 = 64;
+const THREAD_MASK: u16 = THREAD_NUM - 1;
 
 fn main() {
-    
     let mut solution = NetworkControl::new();
     solution.start();
     println!("t:{} search size:{}", T, SEARCH_SIZE);
@@ -37,19 +35,19 @@ fn main() {
 }
 
 struct NetworkControl {
-    f: Arc<Vec<Arc<RwLock<HashMap<String, u8> > > > >,
-    zero_graph: Arc<RwLock<Vec<Vec<u8> > > >, 
-    config_queues: Vec<Arc<RwLock<Vec<Vec<u8> > > > >,
+    f: Arc<Vec<Arc<RwLock<HashMap<String, u16> > > > >,
+    zero_graph: Arc<RwLock<Vec<Vec<u16> > > >, 
+    config_queues: Vec<Arc<RwLock<Vec<Vec<u16> > > > >,
     distri_sems: Vec<Arc<(Mutex<bool>, Condvar)> >,
     gather_sems: Vec<Arc<(Mutex<bool>, Condvar)> >,
-    current_size: Arc<RwLock<u8> >
+    current_size: Arc<RwLock<u16> >
 }
 
 impl NetworkControl {
     fn new() -> Self{
         let mut _f = vec![];
         for i in 0..THREAD_NUM {
-            let hm: HashMap<String, u8> = HashMap::new(); 
+            let hm: HashMap<String, u16> = HashMap::new(); 
             _f.push(Arc::new(RwLock::new(hm.clone())));
         }
         let mut t = NetworkControl{
@@ -58,7 +56,7 @@ impl NetworkControl {
             config_queues: vec![],
             distri_sems: vec![],
             gather_sems: vec![],
-            current_size: Arc::new(RwLock::new(0u8))
+            current_size: Arc::new(RwLock::new(0u16))
         };
         for i in 0..THREAD_NUM {
             t.distri_sems.push(Arc::new((Mutex::new(false), Condvar::new())));
@@ -78,9 +76,9 @@ impl NetworkControl {
             let f = Arc::clone(&self.f);
             let current_size = Arc::clone(&self.current_size);
             thread::Builder::new().name(thread_name).spawn(move|| {
-                let thread_id = thread::current().name().unwrap().parse::<u8>().unwrap();
+                let thread_id = thread::current().name().unwrap().parse::<u16>().unwrap();
                 loop {
-                    let mut config_value: Vec< (Vec<u8>, u8)> = vec![];
+                    let mut config_value: Vec< (Vec<u16>, u16)> = vec![];
                     wait(&distri_sem);
                     search_value(&config_queue, &mut config_value, &f, thread_id);
                     notify(&gather_sem);
@@ -95,12 +93,12 @@ impl NetworkControl {
                 let _f = f[thread_id as usize].read().unwrap().clone();
                 for (paths, value) in _f {
                     if T == 1 {
-                        if NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) != value {
-                            println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T));
+                        if NetworkControl::compute(paths.encode_utf16().collect(), T) != value {
+                            println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.encode_utf16().collect()), value, NetworkControl::compute(paths.encode_utf16().collect(), T));
                         }
                     } else {
-                        if (NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0) != (value > 0) {
-                            println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value > 0, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0);
+                        if (NetworkControl::compute(paths.encode_utf16().collect(), T) > 0) != (value > 0) {
+                            println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.encode_utf16().collect()), value > 0, NetworkControl::compute(paths.encode_utf16().collect(), T) > 0);
                         }
                     }
                 }
@@ -109,7 +107,7 @@ impl NetworkControl {
         }
     }
 
-    fn isplayer0win(paths:Vec<u8>, t: u8) ->bool {
+    fn isplayer0win(paths:Vec<u16>, t: u16) ->bool {
         let mut paths = paths;
         if t == 1{
             gfull_t1(&mut paths);
@@ -122,25 +120,25 @@ impl NetworkControl {
         true
     }
 
-    fn is_ddc_t1(paths:Vec<u8>) -> bool {
+    fn is_ddc_t1(paths:Vec<u16>) -> bool {
         let mut paths = paths;
         gfull_t1(&mut paths);
         if paths.len() == 1 {
             return (paths[0] & 1) > 0 && paths[0] >= 3;
         }
         if paths.len() == 2 {
-            return paths == vec![4u8, 7u8] || paths == vec![3u8,8u8] || paths == vec![1u8,10u8] || paths == vec![8u8,11u8] || paths == vec![5u8,14u8] || paths == vec![3u8,16u8] || paths[0] + 3 == paths[1];
+            return paths == vec![4u16, 7u16] || paths == vec![3u16,8u16] || paths == vec![1u16,10u16] || paths == vec![8u16,11u16] || paths == vec![5u16,14u16] || paths == vec![3u16,16u16] || paths[0] + 3 == paths[1];
         }
         if paths.len() == 3 {
-            return paths == vec![1u8, 4u8, 6u8] || paths == vec![1u8,3u8,7u8] || paths == vec![5u8, 6u8, 8u8] || paths == vec![3u8, 5u8, 11u8] || paths == vec![4u8, 8u8, 9u8] || paths == vec![4u8, 5u8, 12u8] || paths == vec![1u8, 8u8, 12u8] || paths == vec![1u8, 5u8, 15u8] || paths == vec![1u8, 4u8, 16u8] || 3 + paths[0] + paths[1] == paths[2];
+            return paths == vec![1u16, 4u16, 6u16] || paths == vec![1u16,3u16,7u16] || paths == vec![5u16, 6u16, 8u16] || paths == vec![3u16, 5u16, 11u16] || paths == vec![4u16, 8u16, 9u16] || paths == vec![4u16, 5u16, 12u16] || paths == vec![1u16, 8u16, 12u16] || paths == vec![1u16, 5u16, 15u16] || paths == vec![1u16, 4u16, 16u16] || 3 + paths[0] + paths[1] == paths[2];
         }
         if paths.len() == 4 {
-            if paths == vec![1u8, 5u8, 7u8, 8u8] || paths == vec![1u8, 4u8, 5u8, 11u8] {
+            if paths == vec![1u16, 5u16, 7u16, 8u16] || paths == vec![1u16, 4u16, 5u16, 11u16] {
                 return true;
             }
             for i in 0..4 {
                 for j in i+1..4 {
-                    let mut w: Vec<u8> = vec![];
+                    let mut w: Vec<u16> = vec![];
                     for k in 0..4 {
                         if k != i && k != j {
                             w.push(paths[k as usize]);
@@ -148,22 +146,22 @@ impl NetworkControl {
                     }
                     let i = i as usize;
                     let j = j as usize;
-                    if w == vec![3u8, 4u8] && paths[i] + 4 == paths[j] {
+                    if w == vec![3u16, 4u16] && paths[i] + 4 == paths[j] {
                         return true;
                     }
-                    if w == vec![3u8, 5u8] && paths[i] + 11 == paths[j] {
+                    if w == vec![3u16, 5u16] && paths[i] + 11 == paths[j] {
                         return true;
                     }
-                    if w == vec![1u8, 4u8] && paths[i] + 6 == paths[j] {
+                    if w == vec![1u16, 4u16] && paths[i] + 6 == paths[j] {
                         return true;
                     }
-                    if w == vec![1u8, 3u8] && paths[i] + 7 == paths[j] {
+                    if w == vec![1u16, 3u16] && paths[i] + 7 == paths[j] {
                         return true;
                     }
-                    if w == vec![5u8, 8u8] && paths[i] + 6 == paths[j] {
+                    if w == vec![5u16, 8u16] && paths[i] + 6 == paths[j] {
                         return true;
                     }
-                    if w == vec![3u8, 8u8] && paths[i] + 8 == paths[j] {
+                    if w == vec![3u16, 8u16] && paths[i] + 8 == paths[j] {
                         return true;
                     }
                 }
@@ -173,7 +171,7 @@ impl NetworkControl {
         if paths.len() == 5 {
             for i in 0..5 {
                 for j in i+1..5 {
-                    let mut w: Vec<u8> = vec![];
+                    let mut w: Vec<u16> = vec![];
                     for k in 0..5 { 
                         if k != i && k != j {
                             w.push(paths[k as usize]);
@@ -181,16 +179,16 @@ impl NetworkControl {
                     }
                     let i = i as usize;
                     let j = j as usize;
-                    if w == vec![4u8, 5u8, 8u8] && paths[i] + 4 == paths[j] {
+                    if w == vec![4u16, 5u16, 8u16] && paths[i] + 4 == paths[j] {
                         return true;
                     }
-                    if w == vec![1u8, 5u8, 8u8] && paths[i] + 7 == paths[j] {
+                    if w == vec![1u16, 5u16, 8u16] && paths[i] + 7 == paths[j] {
                         return true;
                     }
-                    if w == vec![1u8, 4u8, 8u8] && paths[i] + 8 == paths[j] {
+                    if w == vec![1u16, 4u16, 8u16] && paths[i] + 8 == paths[j] {
                         return true;
                     }
-                    if w == vec![1u8, 4u8, 5u8] && paths[i] + 11 == paths[j] {
+                    if w == vec![1u16, 4u16, 5u16] && paths[i] + 11 == paths[j] {
                         return true;
                     }
                 }
@@ -200,57 +198,39 @@ impl NetworkControl {
         false
     }
     
-    fn compute(paths:Vec<u8>, t:u8) -> u8 {
+    fn compute(paths:Vec<u16>, t:u16) -> u16 {
         let mut paths = paths;
         if t > 1 {
-            return NetworkControl::isplayer0win(paths.clone(), t) as u8;
+            return NetworkControl::isplayer0win(paths.clone(), t) as u16;
         }
         gfull_t1(&mut paths);
-        let mut parity = 0u8;
+        let mut parity = 0u16;
         for i in &paths {
             parity ^= *i;
         } 
         if parity & 1 == 0 {
             if NetworkControl::isplayer0win(paths.clone(), t) {
-                return 2u8;
+                return 2u16;
             }
-            return 0u8;
+            return 0u16;
         }
         if NetworkControl::is_ddc_t1(paths.clone()) {
-            return 3u8;
+            return 3u16;
         }
-        return 1u8;
-     }
+        return 1u16;
+    }
 
-    // fn verify(&mut self) {
-    //     println!("Start verification");
-    //     for i in 0..THREAD_NUM {
-    //         let _f = self.f[i as usize].read().unwrap().clone();
-    //         for (paths, value) in _f {
-    //             if T == 1 {
-    //                 if NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) != value {
-    //                     println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T));
-    //                 }
-    //             } else {
-    //                 if (NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0) != (value > 0) {
-    //                     println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value > 0, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0);
-    //                 }
-    //             }
-    //         }
-    //     }   
-    //     println!("Finish verification");
-    // }
 }
 
-fn config2threadid(d:& Vec<u8>) -> u8 {
-    let mut id = 0u8;
+fn config2threadid(d:& Vec<u16>) -> u16 {
+    let mut id = 0u16;
     for i in d {
         id=(id<<3)^(id>>4)^*i; 
     }
     id & THREAD_MASK
 }
 
-fn gsym(d:&mut Vec<u8>) {
+fn gsym(d:&mut Vec<u16>) {
     if d.is_empty() {
         return;
     }
@@ -264,10 +244,10 @@ fn gsym(d:&mut Vec<u8>) {
             l -= 1;
         }
     }
-    d.resize((l + 1) as usize, 0u8);
+    d.resize((l + 1) as usize, 0u16);
 }
 
-fn gfull_t1(d:&mut Vec<u8>) {
+fn gfull_t1(d:&mut Vec<u16>) {
     gsym(d);
     let mut w = vec![-1; 10];
     for (index, i) in d.iter().enumerate() {
@@ -333,7 +313,8 @@ fn wait_all(sems:& Vec<Arc<(Mutex<bool>, Condvar)> >) {
     }
 }
 
-fn split(n: u8,mn: u8,d: &mut Vec<u8>, config_queues:&mut Vec<Vec<Vec<u8> > >) {
+
+fn split(n: u16,mn: u16,d: &mut Vec<u16>, config_queues:&mut Vec<Vec<Vec<u16> > >) {
     if n==0 {
         config_queues[config2threadid(d) as usize].push(d.clone());
         return;
@@ -351,16 +332,16 @@ fn split(n: u8,mn: u8,d: &mut Vec<u8>, config_queues:&mut Vec<Vec<Vec<u8> > >) {
     d.pop();
 }
 
-fn build_config_queues(sz: u8, config_queues:&mut Vec<Arc<RwLock<Vec<Vec<u8> > > > >) {
-    let mut d: Vec<u8> = vec![];
-    let mut config_queues_:Vec<Vec<Vec<u8>>> = vec![vec![]; THREAD_NUM as usize];
+fn build_config_queues(sz: u16, config_queues:&mut Vec<Arc<RwLock<Vec<Vec<u16> > > > >) {
+    let mut d: Vec<u16> = vec![];
+    let mut config_queues_:Vec<Vec<Vec<u16>>> = vec![vec![]; THREAD_NUM as usize];
     split(sz, 1, &mut d, &mut config_queues_);
     for i in 0..THREAD_NUM {
         *config_queues[i as usize].write().unwrap() = config_queues_[i as usize].clone();
     }
 }
 
-fn search_value(config_queue:& Arc< RwLock< Vec<Vec<u8> > > >,config_value:&mut Vec< (Vec<u8>, u8)>, f:&Vec<Arc<RwLock<HashMap<String, u8> > > >, thread_id: u8) {
+fn search_value(config_queue:& Arc< RwLock< Vec<Vec<u16> > > >,config_value:&mut Vec< (Vec<u16>, u16)>, f:&Vec<Arc<RwLock<HashMap<String, u16> > > >, thread_id: u16) {
     let config_queue = config_queue.read().unwrap().clone();
     for config in &config_queue {
         let mut d = vec![];
@@ -391,7 +372,7 @@ fn search_value(config_queue:& Arc< RwLock< Vec<Vec<u8> > > >,config_value:&mut 
                 if u.is_empty() {
                     v = vv;
                 } else {
-                    let key: String = (String::from_utf8_lossy(&u).to_string()).clone();
+                    let key: String = (String::from_utf16_lossy(&u).to_string()).clone();
                     let oponent_v = *((f[config2threadid(&u) as usize]).read().unwrap().get(&key)).unwrap();
                     if oponent_v < vv {
                         v = cmp::max(v, vv-oponent_v);
@@ -407,20 +388,22 @@ fn search_value(config_queue:& Arc< RwLock< Vec<Vec<u8> > > >,config_value:&mut 
     } 
 }
 
-fn put_value(config_value:& Vec< (Vec<u8>, u8)>, f:&Vec<Arc<RwLock<HashMap<String, u8> > > >, zero_graph:& Arc<RwLock<Vec<Vec<u8> > > >, thread_id: u8) {
+fn put_value(config_value:& Vec< (Vec<u16>, u16)>, f:&Vec<Arc<RwLock<HashMap<String, u16> > > >, zero_graph:& Arc<RwLock<Vec<Vec<u16> > > >, thread_id: u16) {
     let mut _f = f[thread_id as usize].write().unwrap();
     for (config, value) in config_value {
-        _f.insert((String::from_utf8_lossy(&config).to_string()).clone(), *value);
+        _f.insert((String::from_utf16_lossy(&config).to_string()).clone(), *value);
         if *value == 0 {
             zero_graph.write().unwrap().push(config.clone());
         }
     }
 }
 
-fn format_config(config:& Vec<u8>) -> String {
+fn format_config(config:& Vec<u16>) -> String {
     let mut str: String = "".to_string();
     for i in config {
         str = format!("{} {}", str, (*i as u32).to_string());
     }
     str
 }
+
+
