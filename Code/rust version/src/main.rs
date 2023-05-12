@@ -5,7 +5,7 @@ use std::collections::{HashMap};
 use std::thread;
 use std::sync::{RwLock, Arc, Mutex, Condvar};
 
-const SEARCH_SIZE: u8 = 80;
+const SEARCH_SIZE: u8 = 100;
 static T: u8 = 1;
 const THREAD_NUM: u8 = 64;
 const THREAD_MASK: u8 = THREAD_NUM - 1;
@@ -220,26 +220,26 @@ impl NetworkControl {
             return 3u8;
         }
         return 1u8;
-    }
+     }
 
-    fn verify(&mut self) {
-        println!("Start verification");
-        for i in 0..THREAD_NUM {
-            let _f = self.f[i as usize].read().unwrap().clone();
-            for (paths, value) in _f {
-                if T == 1 {
-                    if NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) != value {
-                        println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T));
-                    }
-                } else {
-                    if (NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0) != (value > 0) {
-                        println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value > 0, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0);
-                    }
-                }
-            }
-        }   
-        println!("Finish verification");
-    }
+    // fn verify(&mut self) {
+    //     println!("Start verification");
+    //     for i in 0..THREAD_NUM {
+    //         let _f = self.f[i as usize].read().unwrap().clone();
+    //         for (paths, value) in _f {
+    //             if T == 1 {
+    //                 if NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) != value {
+    //                     println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T));
+    //                 }
+    //             } else {
+    //                 if (NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0) != (value > 0) {
+    //                     println!("counter case:{}; True value:{}; My value:{}", format_config(&paths.clone().as_bytes().to_vec()), value > 0, NetworkControl::compute(paths.clone().as_bytes().to_vec(), T) > 0);
+    //                 }
+    //             }
+    //         }
+    //     }   
+    //     println!("Finish verification");
+    // }
 }
 
 fn config2threadid(d:& Vec<u8>) -> u8 {
