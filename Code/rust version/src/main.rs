@@ -5,7 +5,7 @@ use std::collections::{HashMap};
 use std::thread;
 use std::sync::{RwLock, Arc, Mutex, Condvar};
 
-const SEARCH_SIZE: u16 = 100;
+const SEARCH_SIZE: u16 = 80;
 static T: u16 = 1;
 const THREAD_NUM: u16 = 64;
 const THREAD_MASK: u16 = THREAD_NUM - 1;
@@ -114,7 +114,7 @@ impl NetworkControl {
             return paths.is_empty() == false;
         }
         gsym(&mut paths);
-        if paths == vec![1, 2*t+1, 2*t+2]  {
+        if paths == vec![1, 2*t+1, 2*t+2] || paths.is_empty() == true  {
             return false;
         }
         true
